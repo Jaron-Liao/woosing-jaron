@@ -11,6 +11,11 @@ db.version(2).stores({
   notes: '++id, title, updatedAt',
 })
 
+// v0.10：云端数据不可用时的本地降级存储（聊天记录、伙伴偏好、上传索引）
+db.version(3).stores({
+  userData: '[kind+key], kind, updatedAt',
+})
+
 export const LANGS = { py: 'Python', c: 'C', cpp: 'C++', csv: '数据' }
 
 export function langOf(name) {

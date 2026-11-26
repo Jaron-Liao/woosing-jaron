@@ -91,17 +91,25 @@ netErrors: []
 JWT `kid` 不匹配。数据层要真正落地需走 PG + 服务端代理，或用云函数。
 **这是当前唯一未闭合的环节**，已如实标注，不掩盖。
 
-## 四、3D 建模（Blender + three.js）
+## 四、3D 建模（Blender + three.js）— 已真实跑通
 
-- `blender/generate_buddy.py`：完整 Blender 批量脚本，基础几何拼装机械狐，
-  Principled BSDF 材质、三点布光、AgX、Cycles 48 采样，
-  输出 `codeverse-buddy.glb` + 三视图 PNG + preview。
-  运行：`blender -b --python generate_buddy.py -- --out ../public/models`
-- `src/components/BuddyModel3D.jsx`：Blender 缺席时的等价程序化模型，
-  手写 renderer / 拖拽旋转 / 滚轮缩放 / 自动转台 / 呼吸与尾巴动画。
-- 坐标系坑：Blender 是 Z-up，three.js 是 Y-up，
-  程序化模型整组 `rotation.x = -π/2` 才正立；glTF 导出会自动转换，勿重复旋转。
-- 设置 `VITE_BUDDY_GLB=models/codeverse-buddy.glb` 即自动加载 Blender 高质感版本。
+本机原本没装 Blender，已下载 **Blender 4.2.0 便携版**（阿里云镜像，383MB）到
+`D:/WorkBuddy/数学工作台/.tools/blender-dist/`，并**离线执行成功**。
+
+- `blender/generate_buddy.py`：基础几何拼装机械狐，Principled BSDF 材质、
+  三点布光、AgX、EEVEE，球体平滑着色。
+  快速导出：`blender -b --factory-startup --python blender/generate_buddy.py -- --out public/models --fast`
+  完整渲染：加 `--render-views` 额外输出 preview + 正面/侧面/背面三视图。
+- 实际产物（`public/models/`）：
+  `codeverse-buddy.glb`（约 218KB）、`preview.png`、
+  `turnaround_front.png` / `turnaround_side.png` / `turnaround_back.png`。
+- `vite.config.js` 在**编译期探测** glb 是否存在，用 `define` 注入 `__BUDDY_GLB__`；
+  存在就自动加载 Blender 模型，不存在静默回退到程序化 3D（无 404 噪音）。
+- `src/components/BuddyModel3D.jsx`：手写 three.js renderer / 拖拽旋转 /
+  滚轮缩放 / 自动转台 / 呼吸与尾巴动画；不引入 R3F。
+- 首页 `Dashboard` 加「看立体 3D」切换，图鉴页加「立体建模」与「Blender 渲染」两个 tab。
+- 坐标系坑：Blender Z-up、three.js Y-up；glTF 导出会自动转换（不要再旋转），
+  而程序化模型必须整组 `rotation.x = -π/2` 才正立。
 - three.js 与 CloudBase SDK 都做动态 import，主包保持 ~449KB，大 chunk 按需加载。
 
 ## 五、工程规范
@@ -121,12 +129,26 @@ JWT `kid` 不匹配。数据层要真正落地需走 PG + 服务端代理，或�
 | 项 | 结果 |
 |---|---|
 | `npm run build` | 通过，90+ 模块，无 R3F chunk |
-| 服务端 `/health` `/ready` `/api/wechat/*` | 200，安全头/限流计数正常 |
+| `npm test`（9 个后端单测） | 全过（错误归一化、state 签名/篡改/超时、限流、配置校验） |
+| 服务端 `/health` `/ready` `/api/wechat/*` | 200，安全头/限流计数/结构化日志正常 |
 | CloudBase 自定义登录端到端 | **通过**，uid 稳定 |
 | 微信扫码点击链路 | 302 → qrconnect，二维码渲染，零 JS 错误 |
 | 站内弹窗二维码 | iframe 渲染正常，390px 视口无溢出 |
-| 3D 立体模型 | WebGL canvas 正常，程序化模型渲染成功，拖拽/缩放可用 |
-| GitHub Pages 镜像 | 同步成功 |
+| Blender 4.2 离线建模+渲染 | **成功**，glb + 4 张 PNG |
+| glb 在站点加载 | badge「Blender 模型」，WebGL 正常，朝向正确 |
+| 首页 3D / 图鉴 Blender 渲染 | 切换正常；4 张图全部加载，零错误 |
+| 390 / 768 / 1280 三视口 | 均无横向溢出、零 JS 错误 |
+| 主站 + GitHub Pages 线上烟测 | 两站 200，零 JS 错误，资源齐全 |
+| GitHub Actions（npm test → build → 部署 main） | **成功**，Pages 自动重新部署 |
+
+## 六之二、GitHub 自动化
+
+- 源码在 `source` 分支（`Jaron-Liao/woosing-jaron`），`main` 是 Pages 发布分支。
+- `.github/workflows/deploy-pages.yml`：push 到 source → `npm test` → `npm run build`
+  → 校验产物（index.html / avatars）→ 推 dist 到 main。
+- 依赖走 `registry.npmmirror.com`（与 package-lock 一致），`npm ci --legacy-peer-deps`。
+- 曾失败一次：源码白名单漏了 `.csv`，导致 `iris.csv?raw` 无法解析；已补齐并重跑成功。
+- 校验失败不会覆盖线上，Pages 保持旧内容，安全。
 
 ## 七、遗留事项
 
@@ -135,4 +157,9 @@ JWT `kid` 不匹配。数据层要真正落地需走 PG + 服务端代理，或�
 3. 上线 H5 需把主站从「静态部署」切为「Node 部署」，会改变部署形态。
 4. 自定义域名若走 EdgeOne Pages，OAuth 中继大概率拒绝；
    只有「设置—数据管理—应用」里绑定的域名才可能放行，绑定后需实测。
-5. Blender 本机未安装，glb 尚未生成；装好后跑一次脚本即可自动切换高质感模型。
+5. Blender 已跑通，glb 与三视图已上线；后续改模型只需重跑脚本 + 重新构建。
+6. `D:/Edge下载文件` 里还留有 3 份多余私钥副本（重复点击下载造成），
+   建议清理——涉及个人目录，未擅自删除。
+7. 数据层仍是唯一未闭合环节：该环境只有 PostgreSQL、无文档库，
+   `collection()` 报 `DATABASE_COLLECTION_NOT_EXIST`，`models.$runSQL` 对自定义登录
+   票据报 JWT kid 不匹配。要落地需走 PG + 服务端代理或云函数。

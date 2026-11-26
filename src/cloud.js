@@ -147,21 +147,50 @@ export async function verifyPhoneCode(phone, token) {
 }
 
 // ---- Cloud user data (per-user isolated via RLS) ----
-// 两轨都写同一张表 cv_user_data；owner_id 由各自 SDK 的 auth.uid() 自动填。
-// 注意：CloudBase 轨与 WorkBuddy 轨的 uid 命名空间不同，同一人用两种登录方式
-// 会看到两份数据，这是当前架构的已知限制，后续可用 unionid 映射统一。
+// 微信 CloudBase 轨所在环境只有 PostgreSQL、没有文档数据库，
+// 所以这一轨的云端调用会失败。为了不让聊天记录 / 伙伴配置丢失，
+// 统一降级到本地 IndexedDB（Dexie），并在结果里标记 local=true。
+import { db as localDb } from './db.js'
+
+async function localGet(kind, key) {
+  const row = await localDb.userData.get([kind, key])
+  return row ? { value: row.value, updated_at: row.updatedAt, local: true } : null
+}
+async function localPut(kind, key, value) {
+  const updatedAt = new Date().toISOString()
+  await localDb.userData.put({ kind, key, value, updatedAt })
+  return { value, updated_at: updatedAt, local: true }
+}
+
+/** 微信轨：优先云端，云端不可用则本地；任何失败都不向调用方抛出 */
+async function bridgedData(action, kind, key, value) {
+  try {
+    const { bridgeDatabase } = await import('./cloudbase-bridge.js')
+    const db = await bridgeDatabase()
+    const col = db.collection('cv_user_data')
+    if (action === 'get') {
+      const res = await col.where({ kind, key }).limit(1).get()
+      return res?.data?.[0] || null
+    }
+    const found = await col.where({ kind, key }).limit(1).get()
+    const row = found?.data?.[0]
+    const payload = { kind, key, value, updated_at: new Date().toISOString() }
+    if (row?._id) {
+      await col.doc(row._id).update(payload)
+      return { ...row, ...payload }
+    }
+    const added = await col.add({ ...payload })
+    return { id: added?.id, ...payload }
+  } catch {
+    // DATABASE_COLLECTION_NOT_EXIST 等：自动落到本地，保证功能可用
+    return action === 'get' ? localGet(kind, key) : localPut(kind, key, value)
+  }
+}
+
 export async function loadUserData(kind, key) {
   const session = await currentSession()
   if (!session) return null
-  if (session.provider === 'wechat-cloudbase') {
-    const { bridgeDatabase } = await import('./cloudbase-bridge.js')
-    const db = await bridgeDatabase()
-    const res = await db.collection('cv_user_data')
-      .where({ kind, key })
-      .limit(1)
-      .get()
-    return res?.data?.[0] || null
-  }
+  if (session.provider === 'wechat-cloudbase') return bridgedData('get', kind, key)
   const { data, error } = await cloud.database
     .from('cv_user_data').select('value, updated_at')
     .eq('kind', kind).eq('key', key).maybeSingle()
@@ -172,20 +201,7 @@ export async function saveUserData(kind, key, value) {
   const session = await currentSession()
   if (!session) throw new Error('请先登录')
   const name = session.user?.name || null
-  if (session.provider === 'wechat-cloudbase') {
-    const { bridgeDatabase } = await import('./cloudbase-bridge.js')
-    const db = await bridgeDatabase()
-    const col = db.collection('cv_user_data')
-    const found = await col.where({ kind, key }).limit(1).get()
-    const row = found?.data?.[0]
-    const payload = { kind, key, value, owner_name: name, updated_at: new Date().toISOString() }
-    if (row?._id) {
-      await col.doc(row._id).update({ value, owner_name: name, updated_at: payload.updated_at })
-      return { ...row, ...payload }
-    }
-    const added = await col.add({ ...payload })
-    return { id: added?.id, ...payload }
-  }
+  if (session.provider === 'wechat-cloudbase') return bridgedData('put', kind, key, value)
   // upsert on (owner_id, kind, key) — owner_id omitted, DB fills from auth.uid()
   const { data, error } = await cloud.database
     .from('cv_user_data')
@@ -201,9 +217,22 @@ export async function uploadFile(file, folder = 'files') {
   const session = await currentSession()
   if (!session) throw new Error('请先登录')
   if (session.provider === 'wechat-cloudbase') {
-    const { bridgeUploadFile } = await import('./cloudbase-bridge.js')
-    const path = await bridgeUploadFile(file, folder)
-    // 登记索引，供 listFiles 读取（CloudBase 轨没有 WorkBuddy 的目录列举语义）
+    let path
+    try {
+      const { bridgeUploadFile } = await import('./cloudbase-bridge.js')
+      path = await bridgeUploadFile(file, folder)
+    } catch {
+      // 云存储不可用：把文件本体落到本地 IndexedDB，保证导入/下载照样可用
+      path = `${folder}/${crypto.randomUUID()}-${file.name}`
+      const dataUrl = await new Promise((resolve, reject) => {
+        const fr = new FileReader()
+        fr.onload = () => resolve(fr.result)
+        fr.onerror = () => reject(fr.error)
+        fr.readAsDataURL(file)
+      })
+      await localPut('blob', path, { name: file.name, dataUrl })
+    }
+    // 登记索引，供 listFiles 读取
     try {
       const prev = await loadUserData('uploads', folder)
       const files = Array.isArray(prev?.value?.files) ? prev.value.files : []
@@ -230,8 +259,13 @@ export async function listFiles(folder = 'files') {
 export async function signedUrl(path, ttl = 3600) {
   const session = await currentSession()
   if (session?.provider === 'wechat-cloudbase') {
-    const { bridgeTempUrl } = await import('./cloudbase-bridge.js')
-    return bridgeTempUrl(path, ttl)
+    try {
+      const { bridgeTempUrl } = await import('./cloudbase-bridge.js')
+      const url = await bridgeTempUrl(path, ttl)
+      if (url) return url
+    } catch { /* 落到本地副本 */ }
+    const local = await localGet('blob', path)
+    return local?.value?.dataUrl || null
   }
   const { data, error } = await cloud.storage.createSignedUrl(path, ttl)
   return error ? null : data?.url
