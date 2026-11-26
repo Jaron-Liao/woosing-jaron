@@ -1,0 +1,32 @@
+{
+  "name": "codeverse",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@cloudbase/js-sdk": "^3.11.2",
+    "@cloudbase/node-sdk": "^4.2.1",
+    "@monaco-editor/react": "^4.7.0",
+    "@react-three/fiber": "^9.8.2",
+    "@tencent-ai/workbuddy-cloud-sdk": "^0.1.4-dev.71e5d1e.202611161655",
+    "dexie": "^4.4.6",
+    "dexie-react-hooks": "^4.4.0",
+    "docx": "^9.15.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.26.0",
+    "sharp": "^0.35.5",
+    "three": "^0.187.0",
+    "zustand": "^4.5.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "playwright": "^1.65.1",
+    "vite": "^5.4.0"
+  }
+}

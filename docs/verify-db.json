@@ -1,0 +1,36 @@
+{
+  "steps": [
+    {
+      "ticket": {
+        "len": 453
+      }
+    },
+    {
+      "status": "完成"
+    }
+  ],
+  "parsed": [
+    {
+      "login": {
+        "ok": true,
+        "uid": "wx:wxdbprobe001"
+      }
+    },
+    {
+      "add_error": {
+        "code": "DATABASE_COLLECTION_NOT_EXIST",
+        "message": "This environment has no document database instance. It is provisioned with PostgreSQL instance [postgres-4w7pqnu0], so document-database actions such as CreateTable are not available. Use the ExecutePGSql action with this EnvId and a SQL statement (for example CREATE TABLE ...) to create tables or perform other operations. See https://cloud.tencent.com/document/api/876/130469"
+      }
+    },
+    {
+      "read_error": {
+        "code": "DATABASE_COLLECTION_NOT_EXIST",
+        "message": "This environment has no document database instance. It is provisioned with PostgreSQL instance [postgres-4w7pqnu0], so document-database actions such as CreateTable are not available. Use the ExecutePGSql action with this EnvId and a SQL statement (for example CREATE TABLE ...) to create tables or perform other operations. See https://cloud.tencent.com/document/api/876/130469"
+      }
+    }
+  ],
+  "net": [
+    "404 https://jaron-12305-d2gl0tzsrf2a68c59.api.tcloudbasegateway.com/v1/database/inst",
+    "404 https://jaron-12305-d2gl0tzsrf2a68c59.api.tcloudbasegateway.com/v1/database/inst"
+  ]
+}

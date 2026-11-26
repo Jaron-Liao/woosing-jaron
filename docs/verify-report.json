@@ -1,0 +1,27 @@
+{
+  "steps": [
+    {
+      "ticket_issued": {
+        "customUserId": "wx:wxwxverifytest001",
+        "len": 460
+      }
+    },
+    {
+      "page_status": "成功"
+    },
+    {
+      "page_result": {
+        "ok": true,
+        "uid": "wx:wxwxverifytest001",
+        "customUserId": null
+      }
+    }
+  ],
+  "customUserId": "wx:wxwxverifytest001",
+  "result": {
+    "ok": true,
+    "uid": "wx:wxwxverifytest001",
+    "customUserId": null
+  },
+  "netErrors": []
+}

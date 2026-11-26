@@ -1,0 +1,15 @@
+node_modules
+dist
+.DS_Store
+
+# 本地环境变量（含 AppSecret / 票据签名密钥），绝不提交
+.env
+.env.local
+.env.*.local
+server/.env
+
+# 浏览器登录态 profile（含会话 cookie）
+.edge-cloudbase-profile
+
+# 验证过程产物
+*.log

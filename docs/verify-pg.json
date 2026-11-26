@@ -1,0 +1,39 @@
+{
+  "steps": [
+    {
+      "ticket": {
+        "len": 453
+      }
+    },
+    {
+      "status": "完成"
+    }
+  ],
+  "parsed": [
+    {
+      "login_uid": "wx:wxdbprobe001"
+    },
+    {
+      "capabilities": {
+        "models": "object",
+        "runSQL": "function",
+        "mysql": "function",
+        "rdb": "function"
+      }
+    },
+    {
+      "sql_error": {
+        "code": "UnknownError",
+        "message": "【错误】[JsonWebTokenError] error in secret or public key callback: Unable to find a signing key that matches '9e3b8eb6-fe73-4f6e-9965-3e47906297ce' 更多错误信息请访问：https://docs.cloudbase.net/error-code/basic/INVALID_ACCESS_TOKEN\n      【操作】调用 models.$runSQL\n      【请求ID】N/A"
+      }
+    },
+    {
+      "mysql_ok": {
+        "count": null
+      }
+    }
+  ],
+  "net": [
+    "406 https://jaron-12305-d2gl0tzsrf2a68c59.api.tcloudbasegateway.com/v1/rdb/rest/cv_u"
+  ]
+}

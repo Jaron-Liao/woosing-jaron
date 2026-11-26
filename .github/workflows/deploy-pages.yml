@@ -1,0 +1,50 @@
+name: Build & Deploy CodeVerse Pages
+
+# 源码在 source 分支；每次推送自动构建，产物覆盖 main 分支（Pages 发布源）。
+# 部署前有产物校验，校验失败不会覆盖线上。
+on:
+  push:
+    branches: [source]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          ref: source
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: https://registry.npmmirror.com
+          cache: npm
+
+      - name: Install
+        run: npm ci --legacy-peer-deps --no-audit --no-fund
+
+      - name: Build
+        run: npm run build
+
+      - name: Verify artifact
+        run: |
+          test -f dist/index.html
+          grep -q 'id="root"' dist/index.html
+          test -d dist/avatars
+          test -f dist/avatars/turnaround/lingxi.webp
+          echo "artifact OK"
+
+      - name: Deploy dist to main
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: main
+          publish_dir: ./dist
+          keep_files: false
+          commit_message: 'ci: build from source ${{ github.sha }}'
