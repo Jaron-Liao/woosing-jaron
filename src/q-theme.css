@@ -3706,3 +3706,15 @@ button.side-buddy:hover { border-color: var(--coral); background: var(--panel-2)
   background: var(--paper); border: 1px solid var(--border); border-radius: 10px;
   padding: 10px; margin: 16px 0; max-height: 140px; overflow: auto;
 }
+
+/* v0.10 首页 3D 切换 */
+.q-hero-art { position: relative; }
+.hero-view-toggle {
+  position: absolute; right: 10px; bottom: 10px; z-index: 2;
+  border: 1px solid var(--border); background: rgba(255,255,255,.9); color: var(--ink);
+  font-size: 11px; font-weight: 700; padding: 6px 12px; border-radius: 999px; cursor: pointer;
+  box-shadow: 0 3px 10px rgba(0,0,0,.10);
+}
+.hero-view-toggle:hover { background: #fff; transform: translateY(-1px); }
+.hero-3d-loading { height: 320px; display: grid; place-items: center; font-size: 12px; color: var(--muted); border-radius: 16px; border: 1px solid var(--border); }
+@media (max-width: 700px) { .hero-view-toggle { right: 6px; bottom: 6px; font-size: 10px; } }

@@ -1,9 +1,12 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db.js'
 import { useStore } from '../store.js'
 import WorkbenchScene from '../components/WorkbenchScene.jsx'
+
+// 真 3D 模型按需加载（three.js 750KB 不进首屏），默认保留原 SVG 插画
+const BuddyModel3D = lazy(() => import('../components/BuddyModel3D.jsx'))
 
 function fmtTime(ts) {
   return new Date(ts).toLocaleString('zh-CN', {
@@ -114,6 +117,12 @@ function dateKey(date) {
 
 export default function Dashboard() {
   const navigate = useNavigate()
+  const [heroView, setHeroView] = useState(() => localStorage.getItem('cv:heroView') || 'scene')
+  const toggleHeroView = () => {
+    const next = heroView === '3d' ? 'scene' : '3d'
+    setHeroView(next)
+    localStorage.setItem('cv:heroView', next)
+  }
   const scheme = useStore((s) => s.scheme)
   const fileCount = useLiveQuery(() => db.files.count(), [], 0)
   const snapTotal = useLiveQuery(() => db.snapshots.count(), [], 0)
@@ -235,7 +244,16 @@ export default function Dashboard() {
           </div>
         </div>
         <div className="q-hero-art">
-          <WorkbenchScene />
+          {heroView === '3d' ? (
+            <Suspense fallback={<div className="hero-3d-loading">正在构建 3D 伙伴…</div>}>
+              <BuddyModel3D height={320} />
+            </Suspense>
+          ) : (
+            <WorkbenchScene />
+          )}
+          <button className="hero-view-toggle" onClick={toggleHeroView} title="切换首页视觉">
+            {heroView === '3d' ? '切回插画' : '看立体 3D'}
+          </button>
         </div>
       </section>
 

@@ -16,7 +16,8 @@ const INCLUDE_ROOT_FILES = [
 ]
 const ALLOWED_EXT = new Set([
   '.js', '.jsx', '.mjs', '.css', '.json', '.md', '.py', '.yml', '.yaml',
-  '.html', '.svg', '.webp', '.png', '.txt', '.example',
+  '.html', '.svg', '.webp', '.png', '.txt', '.example', '.csv', '.tsv',
+  '.xlsx', '.xls', '.glb', '.gltf',
 ])
 const EXCLUDE_NAMES = new Set(['.env', '.env.local', 'tcb_custom_login.json'])
 
