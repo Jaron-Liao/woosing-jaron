@@ -100,13 +100,14 @@ def cone(loc, r1, r2, depth, material, name, rot=(0, 0, 0), verts=16):
 
 # ---------------- 身体 ----------------
 sphere((0, 0, 1.02), (0.62, 0.46, 0.58), M_BODY, 'Torso')
-sphere((0, -0.06, 1.06), (0.42, 0.40, 0.40), M_WHITE, 'Belly')
+# 肚皮前移并缩小，避免被躯干完全包住
+sphere((0, -0.24, 1.02), (0.38, 0.30, 0.40), M_WHITE, 'Belly')
 box((0, -0.02, 1.30), (0.52, 0.12, 0.10), M_ACCENT, 'Collar', bevel=0.03)
 
 # 头
 sphere((0, -0.30, 1.72), (0.48, 0.44, 0.44), M_BODY, 'Head')
 sphere((0, -0.62, 1.62), (0.24, 0.26, 0.20), M_WHITE, 'Muzzle')
-sphere((0, -0.83, 1.66), (0.085, 0.07, 0.07), M_DARK, 'Nose')
+sphere((0, -0.85, 1.66), (0.085, 0.07, 0.07), M_DARK, 'Nose')
 
 # 耳朵（左右）
 for side in (-1, 1):
@@ -126,7 +127,7 @@ for side in (-1, 1):
 tail_data = [
     ((0, 0.55, 1.00), (0.25, 0.30, 0.25)),
     ((0, 0.86, 1.18), (0.29, 0.33, 0.29)),
-    ((0, 1.14, 1.42), (0.26, 0.31, 0.26)),
+    ((0, 1.12, 1.42), (0.21, 0.25, 0.21)),
 ]
 for i, (loc, sc) in enumerate(tail_data):
     sphere(loc, sc, M_ACCENT if i == 2 else M_BODY, f'Tail_{i}')
@@ -137,9 +138,9 @@ for x in (-0.34, 0.34):
         box((x, y, 0.44), (0.19, 0.20, 0.72), M_BODY, f'Leg_{x}_{y}', bevel=0.055)
         sphere((x, y - 0.04, 0.13), (0.15, 0.20, 0.11), M_DARK, f'Paw_{x}_{y}')
 
-# 胸口能量核心
-sphere((0, -0.47, 1.18), (0.14, 0.06, 0.14), M_ACCENT, 'Core')
-sphere((0, -0.51, 1.18), (0.075, 0.03, 0.075), M_GOLD, 'CoreInner', segments=12, rings=8)
+# 胸口能量核心（贴到躯干前表面，避免被身体吃掉）
+sphere((0, -0.56, 1.18), (0.15, 0.07, 0.15), M_ACCENT, 'Core')
+sphere((0, -0.61, 1.18), (0.080, 0.035, 0.080), M_GOLD, 'CoreInner', segments=12, rings=8)
 
 # ---------------- 灯光与相机 ----------------
 world = bpy.context.scene.world or bpy.data.worlds.new('World')
@@ -167,15 +168,22 @@ area('Fill', (-3.0, -1.2, 2.4), 260, 3.5, (0.62, 0.88, 1.0))
 area('Rim', (0.4, 3.2, 3.4), 520, 2.4, (0.35, 1.0, 0.88))
 
 scene = bpy.context.scene
-scene.render.engine = 'CYCLES' if hasattr(scene, 'cycles') else 'BLENDER_EEVEE_NEXT'
-if scene.render.engine == 'CYCLES':
-    scene.cycles.samples = 48
-scene.render.resolution_x = 900
-scene.render.resolution_y = 900
+FAST = '--fast' in sys.argv       # 只导出 glb，跳过耗时渲染
+RENDER_VIEWS = '--render-views' in sys.argv
+# 无 GPU 的机器上 Cycles CPU 渲染很慢，默认走 EEVEE（画质足够做预览）
+try:
+    scene.render.engine = 'BLENDER_EEVEE_NEXT'
+except Exception:
+    scene.render.engine = 'BLENDER_EEVEE'
+scene.render.resolution_x = 720
+scene.render.resolution_y = 720
 scene.render.resolution_percentage = 100
 scene.render.image_settings.file_format = 'PNG'
 scene.render.film_transparent = True
-scene.view_settings.view_transform = 'AgX'
+try:
+    scene.view_settings.view_transform = 'AgX'
+except Exception:
+    pass
 
 cam_data = bpy.data.cameras.new('Cam')
 cam = bpy.data.objects.new('Cam', cam_data)
@@ -195,16 +203,25 @@ def render_view(name, loc):
     print('RENDERED', name)
 
 
-render_view('preview.png', (2.4, -4.2, 2.9))
-render_view('turnaround_front.png', (0, -6, 1.3))
-render_view('turnaround_side.png', (6, 0, 1.3))
-render_view('turnaround_back.png', (0, 6, 1.3))
+if not FAST:
+    render_view('preview.png', (2.4, -4.2, 2.9))
+    if RENDER_VIEWS:
+        render_view('turnaround_front.png', (0, -6, 1.3))
+        render_view('turnaround_side.png', (6, 0, 1.3))
+        render_view('turnaround_back.png', (0, 6, 1.3))
 
 # ---------------- 导出 GLB ----------------
 # 只导出模型，不含灯光/相机
+bpy.ops.object.select_all(action='DESELECT')
 for o in parts:
     o.select_set(True)
 bpy.context.view_layer.objects.active = parts[0]
+# 平滑着色：低多边形分面 → 圆润高质感（立方体/圆锥保留棱角更好看，只平滑球体）
+for o in parts:
+    if o.name.startswith(('Torso', 'Belly', 'Head', 'Muzzle', 'Nose', 'Eye', 'Pupil',
+                          'Paw', 'Tail', 'Core')):
+        for poly in o.data.polygons:
+            poly.use_smooth = True
 bpy.ops.export_scene.gltf(
     filepath=os.path.join(OUT, 'codeverse-buddy.glb'),
     export_format='GLB',

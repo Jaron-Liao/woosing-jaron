@@ -38,6 +38,7 @@ export default function CharacterGallery() {
               <div className="gallery-view-tabs">
                 <button className={view === '3d' ? 'active' : ''} onClick={() => setView('3d')}>转台 3D</button>
                 <button className={view === 'model' ? 'active' : ''} onClick={() => setView('model')}>立体建模</button>
+                <button className={view === 'blender' ? 'active' : ''} onClick={() => setView('blender')}>Blender 渲染</button>
                 <button className={view === 'raw' ? 'active' : ''} onClick={() => setView('raw')}>原始三视图</button>
               </div>
             </div>
@@ -52,9 +53,18 @@ export default function CharacterGallery() {
               </Suspense>
             )}
             {view === 'raw' && <img src={character.turnaround} alt={character.name} />}
+            {view === 'blender' && (
+              <div className="blender-render-grid">
+                <figure><img src="models/preview.png" alt="Blender 质感预览" /><figcaption>质感预览</figcaption></figure>
+                <figure><img src="models/turnaround_front.png" alt="正面" /><figcaption>正面</figcaption></figure>
+                <figure><img src="models/turnaround_side.png" alt="侧面" /><figcaption>侧面</figcaption></figure>
+                <figure><img src="models/turnaround_back.png" alt="背面" /><figcaption>背面</figcaption></figure>
+              </div>
+            )}
             <p>
               {view === '3d' && '拖动旋转 · 滚轮缩放 · 自动缓慢转台'}
-              {view === 'model' && '真 3D 立体模型：拖动旋转 · 滚轮缩放 · 呼吸与尾巴动画。若已用 Blender 导出 glb 会自动加载高质感版本。'}
+              {view === 'model' && '真 3D 立体模型：拖动旋转 · 滚轮缩放 · 呼吸与尾巴动画，已自动加载 Blender 导出的 glb。'}
+              {view === 'blender' && 'Blender 4.2 离线渲染：EEVEE 三点布光、Principled BSDF 材质、720×720 透明背景。'}
               {view === 'raw' && `${character.name} · 三视图原图`}
             </p>
           </div>

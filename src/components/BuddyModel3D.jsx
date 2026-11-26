@@ -13,9 +13,11 @@ import { useEffect, useRef, useState } from 'react'
  *
  * 交互：拖拽旋转 / 滚轮缩放 / 自动转台 / 呼吸与尾巴摆动。
  */
-// glbUrl 默认不传：Blender 产物缺席时不发探针请求，避免 404 噪音。
-// 用 Blender 导出 glb 后，设置 VITE_BUDDY_GLB=models/codeverse-buddy.glb 即可自动加载。
-export default function BuddyModel3D({ height = 360, glbUrl = import.meta.env.VITE_BUDDY_GLB || null, className = '' }) {
+// __BUDDY_GLB__ 由 vite.config.js 在构建期决定：public/models 下存在 glb 就启用，
+// 否则为 null，静默回退到程序化 3D，不产生任何探针请求或 404。
+const DEFAULT_GLB = typeof __BUDDY_GLB__ === 'undefined' ? null : __BUDDY_GLB__
+
+export default function BuddyModel3D({ height = 360, glbUrl = DEFAULT_GLB, className = '' }) {
   const mountRef = useRef(null)
   const [status, setStatus] = useState('loading')
 
